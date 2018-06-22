@@ -11,7 +11,7 @@
 
 static void* d_realloc(void* buf, size_t size) {
   void *newbuf = realloc(buf, size);
-  if (!buf) {
+  if (!newbuf) {
     free(buf);
   }
   return newbuf;
