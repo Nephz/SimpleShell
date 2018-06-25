@@ -87,6 +87,14 @@ int shell_system(char **args) {
   pid_t child = fork();
   int status;
 
+
+  struct sigaction sig;
+  sig.sa_handler = SIGINT_handler;
+  sigemptyset(&sig.sa_mask);
+  // system calls will be restarted after the signalhandler has finished its execution
+  sig.sa_flags = SA_RESTART;
+  sigaction(SIGINT, &sig, NULL);
+
   if (child == 0) {
     if (execvp(args[0], args) < 0) {
       perror("msg");
@@ -96,6 +104,14 @@ int shell_system(char **args) {
     perror("msg");
   } else {
     // https://linux.die.net/man/2/waitpid example given at the bottom
+
+    struct sigaction sig;
+    sig.sa_handler = SIGINT_handler; // set to SIG_DFL?
+    sigemptyset(&sig.sa_mask);
+    // system calls will be restarted after the signalhandler has finished its execution
+    sig.sa_flags = SA_RESTART;
+    sigaction(SIGINT, &sig, NULL);
+
     do {
       waitpid(child, &status, WUNTRACED);
     } while(!WIFEXITED(status) && !WIFSIGNALED(status));
