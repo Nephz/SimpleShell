@@ -4,13 +4,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <setjmp.h>
+#include <signal.h>
 #include "builtin.h" 
+#include "sig_handlers.h" 
 
 #define INIT_BUFSIZE 128
 #define DELIMITER " \t\r\n\a"
 
 static void* d_realloc(void* buf, size_t size) {
-  void *newbuf = realloc(buf, size);
+  void* newbuf = realloc(buf, size);
   if (!newbuf) {
     free(buf);
   }
@@ -88,6 +91,13 @@ int shell_system(char **args) {
   int status;
 
   if (child == 0) {
+    struct sigaction sigChild;
+    sigChild.sa_handler = SIGINT_handler; // set to SIG_DFL instead maybe? (however we want back to the start of the while loop)
+    sigemptyset(&sigChild.sa_mask);
+    // system calls will be restarted after the signalhandler has finished its execution
+    sigChild.sa_flags = SA_RESTART;
+    sigaction(SIGINT, &sigChild, NULL);
+
     if (execvp(args[0], args) < 0) {
       perror("msg");
     }
@@ -95,6 +105,7 @@ int shell_system(char **args) {
   } else if (child < 0) {
     perror("msg");
   } else {
+
     // https://linux.die.net/man/2/waitpid example given at the bottom
     do {
       waitpid(child, &status, WUNTRACED);
