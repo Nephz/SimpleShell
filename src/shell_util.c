@@ -86,18 +86,10 @@ char** shell_splitline(char *line) {
 }
 
 int shell_system(char **args) {
-
   pid_t child = fork();
   int status;
 
   if (child == 0) {
-    struct sigaction sigChild;
-    sigChild.sa_handler = SIGINT_handler; // set to SIG_DFL instead maybe? (however we want back to the start of the while loop)
-    sigemptyset(&sigChild.sa_mask);
-    // system calls will be restarted after the signalhandler has finished its execution
-    sigChild.sa_flags = SA_RESTART;
-    sigaction(SIGINT, &sigChild, NULL);
-
     if (execvp(args[0], args) < 0) {
       perror("msg");
     }
@@ -105,7 +97,6 @@ int shell_system(char **args) {
   } else if (child < 0) {
     perror("msg");
   } else {
-
     // https://linux.die.net/man/2/waitpid example given at the bottom
     do {
       waitpid(child, &status, WUNTRACED);
@@ -115,7 +106,6 @@ int shell_system(char **args) {
 }
 
 int shell_command(char **args) {
-  
   if(args[0] == NULL) {
     return 1;
   }
