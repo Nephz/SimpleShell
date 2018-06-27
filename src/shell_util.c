@@ -6,6 +6,7 @@
 #include <string.h>
 #include <setjmp.h>
 #include <signal.h>
+#include <readline/readline.h>
 #include "builtin.h" 
 #include "sig_handlers.h" 
 
@@ -21,39 +22,51 @@ static void* d_realloc(void* buf, size_t size) {
 }
 
 char* shell_readline() {
-  int curr_bufsize = INIT_BUFSIZE;
-  char *buffer = malloc(sizeof(char) * curr_bufsize);
 
-  if (!curr_bufsize) {
-    fprintf(stderr, "shell: malloc failure\n");
+  char* gotLine = readline("> ");
+  // If readline encounters an EOF while reading the line, and the line is empty at that point, then (char *)NULL is returned
+  // http://www.delorie.com/gnu/docs/readline/rlman_24.html
+  if (gotLine == NULL) {
     exit(1);
   }
-
-  int c;
-  int idx = 0;
-  while(1) {
-    c = getchar();
-
-    if (c == EOF) {
-      exit(1);
-    } else if (c == '\n') {
-      buffer[idx] = '\0';
-      return buffer;
-    } else {
-      buffer[idx] = c;
-    }
-    idx++;
-
-    if (idx >= curr_bufsize) {
-      curr_bufsize += INIT_BUFSIZE;
-      buffer = d_realloc(buffer, curr_bufsize);
-      if (!buffer) {
-        fprintf(stderr, "shell: malloc failure\n");
-        exit(1);
-      }
-    }
-  }
+  return gotLine;
 }
+
+// <-----OLD----->
+// char* shell_readline() {
+//   int curr_bufsize = INIT_BUFSIZE;
+//   char *buffer = malloc(sizeof(char) * curr_bufsize);
+
+//   if (!curr_bufsize) {
+//     fprintf(stderr, "shell: malloc failure\n");
+//     exit(1);
+//   }
+
+//   int c;
+//   int idx = 0;
+//   while(1) {
+//     c = getchar();
+
+//     if (c == EOF) {
+//       exit(1);
+//     } else if (c == '\n') {
+//       buffer[idx] = '\0';
+//       return buffer;
+//     } else {
+//       buffer[idx] = c;
+//     }
+//     idx++;
+
+//     if (idx >= curr_bufsize) {
+//       curr_bufsize += INIT_BUFSIZE;
+//       buffer = d_realloc(buffer, curr_bufsize);
+//       if (!buffer) {
+//         fprintf(stderr, "shell: malloc failure\n");
+//         exit(1);
+//       }
+//     }
+//   }
+// }
 
 char** shell_splitline(char *line) {
   int curr_bufsize = INIT_BUFSIZE;

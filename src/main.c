@@ -27,8 +27,7 @@ int main(int argc, char **argv) {
     }
 
     jmp_active = 1;
-
-    printf("sh > ");
+    
     line = shell_readline();
     args = shell_splitline(line);
     status = shell_command(args);
