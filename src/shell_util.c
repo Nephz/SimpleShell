@@ -21,9 +21,9 @@ static void* d_realloc(void* buf, size_t size) {
   return newbuf;
 }
 
-char* shell_readline() {
+char* shell_readline(char* prompt) {
 
-  char* gotLine = readline("> ");
+  char* gotLine = readline(prompt);
   // If readline encounters an EOF while reading the line, and the line is empty at that point, then (char *)NULL is returned
   // http://www.delorie.com/gnu/docs/readline/rlman_24.html
   if (gotLine == NULL) {
@@ -31,42 +31,6 @@ char* shell_readline() {
   }
   return gotLine;
 }
-
-// <-----OLD----->
-// char* shell_readline() {
-//   int curr_bufsize = INIT_BUFSIZE;
-//   char *buffer = malloc(sizeof(char) * curr_bufsize);
-
-//   if (!curr_bufsize) {
-//     fprintf(stderr, "shell: malloc failure\n");
-//     exit(1);
-//   }
-
-//   int c;
-//   int idx = 0;
-//   while(1) {
-//     c = getchar();
-
-//     if (c == EOF) {
-//       exit(1);
-//     } else if (c == '\n') {
-//       buffer[idx] = '\0';
-//       return buffer;
-//     } else {
-//       buffer[idx] = c;
-//     }
-//     idx++;
-
-//     if (idx >= curr_bufsize) {
-//       curr_bufsize += INIT_BUFSIZE;
-//       buffer = d_realloc(buffer, curr_bufsize);
-//       if (!buffer) {
-//         fprintf(stderr, "shell: malloc failure\n");
-//         exit(1);
-//       }
-//     }
-//   }
-// }
 
 char** shell_splitline(char *line) {
   int curr_bufsize = INIT_BUFSIZE;
@@ -99,8 +63,9 @@ char** shell_splitline(char *line) {
 }
 
 int shell_system(char **args) {
-  pid_t child = fork();
   int status;
+  pid_t w;
+  pid_t child = fork();
 
   if (child == 0) {
     if (execvp(args[0], args) < 0) {
@@ -112,7 +77,11 @@ int shell_system(char **args) {
   } else {
     // https://linux.die.net/man/2/waitpid example given at the bottom
     do {
-      waitpid(child, &status, WUNTRACED);
+      w = waitpid(child, &status, WUNTRACED);
+      if (w == -1) {
+        perror("waitpid");
+        exit(1);
+      }
     } while(!WIFEXITED(status) && !WIFSIGNALED(status));
   }
   return 1;
@@ -122,14 +91,12 @@ int shell_command(char **args) {
   if(args[0] == NULL) {
     return 1;
   }
-
   // checks builtins first
   for(int i = 0; i < num_builtins(); i++) {
     if (strcmp(args[0], builtin_str[i]) == 0) {
       return (*builtin_func[i])(args);
     }
   }
-
   // Asks the system 
   return shell_system(args);
 }

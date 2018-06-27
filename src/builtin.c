@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include "shell_util.h" 
 
 int shell_cd(char **args);
 int shell_exit(char **args);

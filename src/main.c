@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 
     jmp_active = 1;
     
-    line = shell_readline();
+    line = shell_readline("> ");
     args = shell_splitline(line);
     status = shell_command(args);
 
