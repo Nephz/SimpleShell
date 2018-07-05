@@ -27,9 +27,9 @@ int num_builtins() {
 static char prev[1024];
 
 int shell_cd(char **args) {
-  if (args[1] == NULL) {
+  if (*(args + 1) == NULL) {
     fprintf(stderr, "msg: expected argument to \"cd\"\n");
-  } else if (*(args[1]) == '-') {
+  } else if (**(args + 1) == '-') {
     char tmp[1024];
     strcpy(tmp, prev);
     getcwd(prev, sizeof(prev));
@@ -38,7 +38,7 @@ int shell_cd(char **args) {
     }
   } else {
     getcwd(prev, sizeof(prev));  
-    if (chdir(args[1]) != 0) {
+    if (chdir(*(args + 1)) != 0) {
       perror("msg");
     }
   }

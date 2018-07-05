@@ -68,7 +68,7 @@ int shell_system(char **args) {
   pid_t child = fork();
 
   if (child == 0) {
-    if (execvp(args[0], args) < 0) {
+    if (execvp(*args, args) < 0) {
       perror("msg");
     }
     exit(1);
@@ -88,12 +88,12 @@ int shell_system(char **args) {
 }
 
 int shell_command(char **args) {
-  if(args[0] == NULL) {
+  if(*args == NULL) {
     return 1;
   }
   // checks builtins first
   for(int i = 0; i < num_builtins(); i++) {
-    if (strcmp(args[0], builtin_str[i]) == 0) {
+    if (strcmp(*args, builtin_str[i]) == 0) {
       return (*builtin_func[i])(args);
     }
   }
