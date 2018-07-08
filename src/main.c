@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
   sigaction(SIGINT, &sig, NULL);
 
   do {
-    // Takes a buffer and a flag (savesigs flag - will unblock the next signal as soon as siglongjmp is called)
+    // We set the savesigs flag to nonzero (1 here), to save it, and make sure to restore it, when the signal handler is done - so we can get the signal again.
     if (sigsetjmp(env, 1) == 1) {
       printf("\n");
       status = 1;

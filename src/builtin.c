@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include "shell_util.h" 
 
 int shell_cd(char **args);
@@ -14,34 +15,47 @@ char* builtin_str[] = {
 
 // Function pointers.
 // Array of function pointers taking array of strings, returning int
-int (*builtin_func[]) (char **) = {
+int (*builtin_func[]) (char**) = {
   &shell_cd,
   &shell_exit
 };
 
 // This wrapper is needed apparently?
 int num_builtins() {
-  return sizeof(builtin_str) / sizeof(char *);
+  return sizeof(builtin_str) / sizeof(char*);
 }
 
-static char prev[1024];
+static char prev[PATH_MAX] = {0};
+static char tmp[PATH_MAX]  = {0};
+
+static int check_buff(char* buf) {
+  for (int i = 0; i < sizeof(buf) / sizeof(char*); i++) {
+    if ((*(buf + i)) != 0) {
+      return 0;
+    }
+  }
+  return 1;
+}
 
 int shell_cd(char **args) {
   if (*(args + 1) == NULL) {
     fprintf(stderr, "msg: expected argument to \"cd\"\n");
   } else if (**(args + 1) == '-') {
-    char tmp[1024];
+    if (check_buff(prev)) {
+      return 1;
+    }
     strcpy(tmp, prev);
-    getcwd(prev, sizeof(prev));
+    getcwd(prev, PATH_MAX);
     if (chdir(tmp) != 0) {
       perror("msg");
     }
   } else {
-    getcwd(prev, sizeof(prev));  
+    getcwd(prev, PATH_MAX);  
     if (chdir(*(args + 1)) != 0) {
       perror("msg");
     }
   }
+
   return 1;
 }
 

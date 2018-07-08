@@ -26,7 +26,7 @@ char* shell_readline(char* prompt) {
   char* gotLine = readline(prompt);
   // If readline encounters an EOF while reading the line, and the line is empty at that point, then (char *)NULL is returned
   // http://www.delorie.com/gnu/docs/readline/rlman_24.html
-  if (gotLine == NULL) {
+  if (!gotLine) {
     exit(1);
   }
   return gotLine;
@@ -44,7 +44,7 @@ char** shell_splitline(char *line) {
 
   int idx = 0;
   token = strtok(line, DELIMITER);
-  while (token != NULL) {
+  while (token) {
     tokens[idx] = token;
     idx++;
 
@@ -88,7 +88,7 @@ int shell_system(char **args) {
 }
 
 int shell_command(char **args) {
-  if(*args == NULL) {
+  if(!(*args)) {
     return 1;
   }
   // checks builtins first
