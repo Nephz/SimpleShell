@@ -8,11 +8,12 @@
 int shell_cd(char **args);
 int shell_exit(char **args);
 
+static int check_buff(char* buf, int bufLen);
+
 char* builtin_str[] = {
   "cd",
   "exit"
 };
-
 // Function pointers.
 // Array of function pointers taking array of strings, returning int
 int (*builtin_func[]) (char**) = {
@@ -28,20 +29,11 @@ int num_builtins() {
 static char prev[PATH_MAX] = {0};
 static char tmp[PATH_MAX]  = {0};
 
-static int check_buff(char* buf) {
-  for (int i = 0; i < sizeof(buf) / sizeof(char*); i++) {
-    if ((*(buf + i)) != 0) {
-      return 0;
-    }
-  }
-  return 1;
-}
-
 int shell_cd(char **args) {
   if (*(args + 1) == NULL) {
     fprintf(stderr, "msg: expected argument to \"cd\"\n");
-  } else if (**(args + 1) == '-') {
-    if (check_buff(prev)) {
+  } else if (**(args + 1) == '-' && !*(*(args + 1) + 1) && !*(args + 2)) {
+    if (check_buff(prev, PATH_MAX)) {
       return 1;
     }
     strcpy(tmp, prev);
@@ -61,4 +53,13 @@ int shell_cd(char **args) {
 
 int shell_exit(char **args) {
   return 0;
+}
+
+static int check_buff(char* buf, int bufLen) {
+  for (int i = 0; i < bufLen; i++) {
+    if ((*(buf + i)) != 0) {
+      return 0;
+    }
+  }
+  return 1;
 }
