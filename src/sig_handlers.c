@@ -1,6 +1,5 @@
 #include <signal.h>
 #include <setjmp.h>
-#include "sig_handlers.h"
 
 sigjmp_buf env;
 

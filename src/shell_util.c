@@ -101,3 +101,34 @@ int shell_command(char **args) {
   return shell_system(args);
 }
 
+void shell_loop() {
+  char *line;
+  char **args;
+  int status;
+
+  struct sigaction sig;
+  sig.sa_handler = SIGINT_handler;
+  sigemptyset(&sig.sa_mask);
+  // system calls will be restarted after the signalhandler has finished its execution
+  sig.sa_flags = SA_RESTART;
+  sigaction(SIGINT, &sig, NULL);
+
+  do {
+    // We set the savesigs flag to nonzero (1 here), to save it, and make sure to restore it, when the signal handler is done - so we can get the signal again.
+    if (sigsetjmp(env, 1) == 1) {
+      printf("\n");
+      status = 1;
+      continue;
+    }
+
+    jmp_active = 1;
+    
+    line = shell_readline("> ");
+    args = shell_splitline(line);
+    status = shell_command(args);
+
+    free(line);
+    free(args);
+  } while(status);
+}
+
