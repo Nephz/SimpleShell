@@ -15,7 +15,7 @@ char* builtin_str[] = {
   "exit"
 };
 // Function pointers.
-// Array of function pointers taking array of strings, returning int
+// Array of function pointers, which takes array of strings and returns int
 int (*builtin_func[]) (char**) = {
   &shell_cd,
   &shell_exit
