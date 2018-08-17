@@ -6,6 +6,7 @@
 #include <string.h>
 #include <setjmp.h>
 #include <signal.h>
+#include <limits.h>
 #include <readline/readline.h>
 #include "builtin.h" 
 #include "sig_handlers.h" 
@@ -21,11 +22,55 @@ static void* d_realloc(void* buf, size_t size) {
   return newbuf;
 }
 
-char* shell_readline(char* prompt) {
+char* get_nice_prompt(char* end_of_prompt) {
 
+  char pwd[PATH_MAX+1];
+  char *home;
+  char *ret_prompt;
+  
+  // Pointer to the HOME string
+  home = getenv("HOME");
+  if (!home) {
+    home = "";
+  } 
+
+  // Copies the path to pwd
+  getcwd(pwd, PATH_MAX);
+  char *offset = strstr(pwd, home);
+  int pwd_len = strlen(pwd);
+  int end_of_prompt_len = strlen(end_of_prompt);
+  
+  // Dunno if this works.
+  if (!offset) {
+    ret_prompt = malloc(pwd_len + end_of_prompt_len + 1);
+
+    memcpy(ret_prompt, pwd, pwd_len);
+    strcpy(ret_prompt + pwd_len, end_of_prompt);
+    return ret_prompt;
+  }
+  // else
+  int home_len = strlen(home);
+  if (home_len > PATH_MAX) {
+    exit(1);
+  }
+
+  // +2 = 1 (for NULL terminator) + 1 ('~' char)
+  ret_prompt = malloc(pwd_len - home_len + end_of_prompt_len + 2);
+
+  memcpy(ret_prompt, "~", 1);
+  memcpy(ret_prompt + 1, offset + home_len, pwd_len - home_len);
+  strcpy(ret_prompt + 1 + pwd_len - home_len, end_of_prompt);
+
+  return ret_prompt;
+}
+
+char* shell_readline(char *append_prompt) {
+
+  char* prompt = get_nice_prompt(append_prompt);
   char* gotLine = readline(prompt);
   // If readline encounters an EOF while reading the line, and the line is empty at that point, then (char *)NULL is returned
   // http://www.delorie.com/gnu/docs/readline/rlman_24.html
+  free(prompt);
   if (!gotLine) {
     exit(1);
   }
@@ -69,7 +114,7 @@ int shell_system(char **args) {
 
   if (child == 0) {
     if (execvp(*args, args) < 0) {
-      perror("msg");
+      fprintf(stderr, "msg: Execution failed\n ");
     }
     exit(1);
   } else if (child < 0) {
@@ -123,7 +168,7 @@ void shell_loop() {
 
     jmp_active = 1;
     
-    line = shell_readline("> ");
+    line = shell_readline(" >>> ");
     args = shell_splitline(line);
     status = shell_command(args);
 
