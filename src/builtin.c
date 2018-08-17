@@ -26,40 +26,58 @@ int num_builtins() {
   return sizeof(builtin_str) / sizeof(char*);
 }
 
-static char prev[PATH_MAX] = {0};
-static char tmp[PATH_MAX]  = {0};
+// TODO: make another util file with helper functions like this.
+void nullchecker(void *p, char* msg) {
+  if (!p) {
+    fprintf(stderr, "%s" ,msg);
+    exit(1);
+  }
+}
 
 int shell_cd(char **args) {
-  if (*(args + 1) == NULL) {
-    fprintf(stderr, "msg: expected argument to \"cd\"\n");
-  } else if (**(args + 1) == '-' && !*(*(args + 1) + 1) && !*(args + 2)) {
-    if (check_buff(prev, PATH_MAX)) {
-      return 1;
-    }
-    strcpy(tmp, prev);
-    getcwd(prev, PATH_MAX);
-    if (chdir(tmp) != 0) {
+  // Maybe we should use the feature of getcwd to allocate dynamically
+  char cur_pwd[PATH_MAX + 1];
+  
+  // if no argument or if argument is '~' 
+  if (*(args + 1) == NULL || (**(args + 1) == '~' && !*(*(args + 1) + 1) && !*(args + 2))) {
+    setenv("OLDPWD", getenv("PWD"), 1);
+    char *home = getenv("HOME");
+    if (chdir(home) != 0) {
       perror("msg");
+      exit(1);
     }
+    getcwd(cur_pwd, PATH_MAX);
+    setenv("PWD", cur_pwd, 1);
+  } else if (**(args + 1) == '-' && !*(*(args + 1) + 1) && !*(args + 2)) {
+    char new_old_pwd[PATH_MAX] = {0};
+    char *p = getenv("OLDPWD");
+
+    nullchecker(p, "Failure when getting env variable: OLDPWD");
+
+    strcpy(new_old_pwd, p);
+
+    setenv("OLDPWD", getenv("PWD"), 1);
+
+    if (chdir(new_old_pwd) != 0) {
+      perror("msg");
+      exit(1);
+    }
+
+    getcwd(cur_pwd, PATH_MAX);
+    setenv("PWD", cur_pwd, 1);
+
   } else {
-    getcwd(prev, PATH_MAX);  
+    setenv("OLDPWD", getenv("PWD"), 1); 
     if (chdir(*(args + 1)) != 0) {
       perror("msg");
+      exit(1);
     }
+    getcwd(cur_pwd, PATH_MAX);
+    setenv("PWD", cur_pwd, 1);
   }
-
   return 1;
 }
 
 int shell_exit(char **args) {
   return 0;
-}
-
-static int check_buff(char* buf, int bufLen) {
-  for (int i = 0; i < bufLen; i++) {
-    if ((*(buf + i)) != 0) {
-      return 0;
-    }
-  }
-  return 1;
 }
