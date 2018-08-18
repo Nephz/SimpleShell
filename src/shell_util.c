@@ -11,6 +11,7 @@
 #include "builtin.h" 
 #include "sig_handlers.h" 
 #include "util.h"
+#include "pipe_redirect.h"
 
 #define INIT_BUFSIZE 128
 #define DELIMITER " \t\r\n\a"
@@ -131,7 +132,7 @@ int shell_command(char **args) {
   return shell_system(args);
 }
 
-void shell_loop() {
+void shell_loop(char* prompt) {
   char *line;
   char **args;
   int status;
@@ -153,7 +154,7 @@ void shell_loop() {
 
     jmp_active = 1;
     
-    line = shell_readline(" >>> ");
+    line = shell_readline(prompt);
     args = shell_splitline(line);
     status = shell_command(args);
 
