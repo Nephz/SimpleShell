@@ -10,19 +10,12 @@
 #include <readline/readline.h>
 #include "builtin.h" 
 #include "sig_handlers.h" 
+#include "util.h"
 
 #define INIT_BUFSIZE 128
 #define DELIMITER " \t\r\n\a"
 
-static void* d_realloc(void* buf, size_t size) {
-  void* newbuf = realloc(buf, size);
-  if (!newbuf) {
-    free(buf);
-  }
-  return newbuf;
-}
-
-char* get_nice_prompt(char* end_of_prompt) {
+static char* get_nice_prompt(char* end_of_prompt) {
 
   char pwd[PATH_MAX+1];
   char *home;
@@ -32,7 +25,7 @@ char* get_nice_prompt(char* end_of_prompt) {
   home = getenv("HOME");
   if (!home) {
     home = "";
-  } 
+  }  
 
   // Copies the path to pwd
   getcwd(pwd, PATH_MAX);
@@ -71,9 +64,8 @@ char* shell_readline(char *append_prompt) {
   // If readline encounters an EOF while reading the line, and the line is empty at that point, then (char *)NULL is returned
   // http://www.delorie.com/gnu/docs/readline/rlman_24.html
   free(prompt);
-  if (!gotLine) {
-    exit(1);
-  }
+  nullchecker(gotLine, "", Nothing); // print nothing, just exit if NULL
+
   return gotLine;
 }
 
@@ -82,10 +74,7 @@ char** shell_splitline(char *line) {
   char **tokens = malloc(curr_bufsize * sizeof(char*));
   char *token;
 
-  if(!tokens) {
-    fprintf(stderr, "shell: malloc failure\n");
-    exit(1);
-  }
+  nullchecker(tokens, "Malloc failure\n", Msg);
 
   int idx = 0;
   token = strtok(line, DELIMITER);
@@ -96,10 +85,6 @@ char** shell_splitline(char *line) {
     if (idx >= curr_bufsize) {
       curr_bufsize += INIT_BUFSIZE;
       tokens = d_realloc(tokens, curr_bufsize * sizeof(char*));
-      if(!tokens) {
-        fprintf(stderr, "malloc failure\n");
-        exit(1);
-      }
     }
     token = strtok(NULL, DELIMITER);
   }
