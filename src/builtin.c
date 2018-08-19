@@ -6,6 +6,8 @@
 #include "shell_util.h" 
 #include "util.h"
 
+#define CD_ARG(s,c) (**(s + 1) == c && !*(*(s + 1) + 1) && !*(s + 2))
+
 int shell_cd(char **args);
 int shell_exit(char **args);
 
@@ -32,7 +34,7 @@ int shell_cd(char **args) {
   char cur_pwd[PATH_MAX + 1];
   
   // if no argument or if argument is '~' 
-  if (*(args + 1) == NULL || (**(args + 1) == '~' && !*(*(args + 1) + 1) && !*(args + 2))) {
+  if (*(args + 1) == NULL || CD_ARG(args, '~')) {
     setenv("OLDPWD", getenv("PWD"), 1);
     char *home = getenv("HOME");
     if (chdir(home) != 0) {
@@ -40,7 +42,7 @@ int shell_cd(char **args) {
     }
     getcwd(cur_pwd, PATH_MAX);
     setenv("PWD", cur_pwd, 1);
-  } else if (**(args + 1) == '-' && !*(*(args + 1) + 1) && !*(args + 2)) {
+  } else if (CD_ARG(args, '-')) {
     char new_old_pwd[PATH_MAX] = {0};
     char *p = getenv("OLDPWD");
 

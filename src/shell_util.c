@@ -45,7 +45,7 @@ static char* get_nice_prompt(char* end_of_prompt) {
   // else
   int home_len = strlen(home);
   if (home_len > PATH_MAX) {
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   // +2 = 1 (for NULL terminator) + 1 ('~' char)
@@ -67,6 +67,12 @@ char* shell_readline(char *append_prompt) {
   free(prompt);
   nullchecker(gotLine, "", Nothing); // print nothing, just exit if NULL
 
+  // remove quotation marks
+  int len = strlen(gotLine);
+  for (int i = 0; i < len; i++) {
+    if (gotLine[i] == '"') gotLine[i] = ' ';
+  }
+
   return gotLine;
 }
 
@@ -75,7 +81,7 @@ char** shell_splitline(char *line) {
   char **tokens = malloc(curr_bufsize * sizeof(char*));
   char *token;
 
-  nullchecker(tokens, "Malloc failure\n", Msg);
+  nullchecker(tokens, "Memory allocation failure\n", Msg);
 
   int idx = 0;
   token = strtok(line, DELIMITER);
@@ -96,28 +102,40 @@ char** shell_splitline(char *line) {
 int shell_system(char **args) {
   int status;
   pid_t w;
-  pid_t child = fork();
+  pid_t proc;
 
-  if (child == 0) {
+  // for(int i = 0; *(args + i) != NULL; i++) {
+  //   printf("%s\n", *(args + i));
+  // }
+
+  if (pipe_check(args)) {
+    pipe_stuff(args);
+    return 1;
+  } else {
+    proc = fork();
+  }
+
+  if (proc == 0) { // is child
     if (execvp(*args, args) < 0) {
       fprintf(stderr, "msg: Execution failed\n ");
     }
-    exit(1);
-  } else if (child < 0) {
+    exit(EXIT_SUCCESS);
+  } else if (proc < 0) { // failure
     perror("msg");
-  } else {
+  } else { // parent
     // https://linux.die.net/man/2/waitpid example given at the bottom
     do {
-      w = waitpid(child, &status, WUNTRACED);
+      w = waitpid(proc, &status, WUNTRACED);
       if (w == -1) {
         perror("waitpid");
-        exit(1);
+        exit(EXIT_FAILURE);
       }
     } while(!WIFEXITED(status) && !WIFSIGNALED(status));
   }
   return 1;
 }
 
+// Maybe these commands could be used when piping....
 int shell_command(char **args) {
   if(!(*args)) {
     return 1;
@@ -158,8 +176,8 @@ void shell_loop(char* prompt) {
     args = shell_splitline(line);
     status = shell_command(args);
 
-    free(line);
-    free(args);
+    free(line); // the original line (with NULLs inside - created by strtok
+    free(args); // array of pointers that point to indexes of line.
   } while(status);
 }
 
