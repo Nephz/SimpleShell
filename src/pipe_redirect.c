@@ -11,95 +11,171 @@
 #define OUTPUT_END 1
 
 #define IS_PIPE(c) (*c == '|' || *c == '=')
+#define IS_REDIRECT(c) (*c == '<' || *c == '>')
+
+typedef enum symbol {
+  sym_pipe,
+  sym_redirect,
+} symbol;
 
 // number of pipes
 // number of string entries
-// The array with strings
-// The array (which in find_replace_pipes(), will be modified.)
+// new array where '|' have been removed and in the original string transformed to a space
+
+/**
+["echo", "hello", "|", "lolcat", ">", "txt.pls2", NULL]
+**/
+
+
+// typedef struct cmd {
+//   char* prev;
+//   char** exec;
+// } cmd;
+
+// typedef struct pip {
+//   int n_;
+//   int n_str;
+//   cmd ***cmds;
+// } pip;
+
 typedef struct pip {
-  int n_pipes;
+  int n_sym;
   int n_str;
+  symbol* syms;
 } pip;
 
 
-int pipe_check(char **p) {
+// Returns the number of symbols found (see the enum)
+int count_symbols(char **p) {
+  int acc = 0;
   for (int i = 0; *(p + i) != NULL; i++) {
     char *chr = *(p + i);
     // two kinds of pipes (| or =)
-    if (strlen(chr) == 1 && IS_PIPE(chr)) {
-      return 1;
+    if (strlen(chr) == 1 && (IS_PIPE(chr))) {
+      acc++;
+    } else if (IS_REDIRECT(chr)) {
+      fprintf(stderr, "redirection is not implemented yet");
+      exit(EXIT_FAILURE);
     }
   }
-  return 0;
+  return acc;
 }
 
 // Should only be called if pipe_check evals to true.
-pip* find_replace_pipes(char **p) {
+static pip* find_replace_symbols(char **p, int n_symbols) {
   pip* ret = malloc(sizeof(pip));
-  for (int i = 0; *(p + i) != NULL; i++) {
+  ret->syms = malloc(sizeof(symbol) * n_symbols);
+  ret->n_sym = 0;
+  ret->n_str = 0;
+  //printf("ååå %lu \n", sizeof(symbol *) * n_symbols);
+  symbol *tmp = ret->syms;
+
+  for (int i = 0, k = 0; *(p + i) != NULL; i++) {
     char *chr = *(p + i);
     if (IS_PIPE(chr)) {
-      ret->n_pipes++;
-      *(p + i) = NULL; 
+      ret->n_sym++;
+      *(p + i) = NULL;
+      tmp[k] = sym_pipe;
+      k++;
+    } else if (IS_REDIRECT(chr)) {
+      ret->n_sym++;
+      *(p + i) = NULL;
+      tmp[k] = sym_redirect;
+      k++;
+    } else {
+      ret->n_str++;
     }
-    ret->n_str++; // Last "null" is not counted.
   }
+
+  if (ret->n_sym >= ret->n_str) {
+    fprintf(stderr, "msg: Can't determine the pipeline\n");
+  }
+
   return ret;
 }
 
-void pipe_stuff(char **p) {
-  int status;
+void pipeline_execute(char **p, pip* info) { 
+  int status = 0;
   pid_t w;
   pid_t pid;
-  int fd[2];
 
-  pip* info = find_replace_pipes(p);
-  pipe(fd);
+  symbol *ptr = info->syms;
+  int len = info->n_str + info->n_sym;
+  int n_nulls = info->n_sym + 1;
 
-  pid = fork();
+  int fd_pipes[2*info->n_sym];
 
-  if (pid == 0){
-    close(fd[INPUT_END]);
-    if (dup2(fd[OUTPUT_END], STDOUT_FILENO) == -1) {
-      fprintf(stderr, "dup2 fail\n ");
-      exit(EXIT_FAILURE);
+  // Create pipes
+  for (int i = 0; i < info->n_sym; i++) {
+    if (pipe(fd_pipes + i*2) < 0) {
+      perror("msg");
     }
-    close(fd[OUTPUT_END]);
+  }
 
-    if (execvp(*p, p) < 0) {
-      fprintf(stderr, "msg: Execution failed\n ");
+  int cmds[info->n_str];
+  int k = 0;
+  for (int i = 0; i < len; i++) {
+    if (p[i]) {
+      cmds[k] = i;
+      k++;
+      i++;
+      while (p[i]) {
+        i++;
+      }
     }
-    
-    exit(EXIT_SUCCESS);
-  } else {
+  }
+  cmds[k] = -1;
+
+  int cmds_len = k;
+
+  for (int idx = 0, cmd = 0; idx < k; idx++, cmd++) {
     pid = fork();
 
     if (pid == 0) {
-      close(fd[OUTPUT_END]);
-
-      if (dup2(fd[INPUT_END], STDIN_FILENO) == -1) {
-        fprintf(stderr, "dup2 fail\n ");
-        exit(EXIT_FAILURE);
+      // first command does not take input from other process
+      if (cmd != 0) {
+        if (dup2(fd_pipes[(cmd-1)*2], 0) == -1) {
+          fprintf(stderr, "input dup2 failed at cmd=%d \n", cmd);
+          perror("input");
+          exit(EXIT_FAILURE);
+        }
       }
-      close(fd[INPUT_END]);
+      // last command ouputs to stdout (or internally used fd).
+      if (cmd < cmds_len-1) {
+        if (dup2(fd_pipes[cmd*2+1], 1) == -1) {
+          fprintf(stderr, "output dup2 failed at cmd=%d \n", cmd);
+          perror("output");
+          exit(EXIT_FAILURE);
+        }
+      }
 
-      if (execvp(*(p + 2), p + 2) < 0) {
+      for (int i = 0; i < 2*info->n_sym; i++) {
+        close(fd_pipes[i]);
+      }
+
+      if (execvp(p[cmds[cmd]], &p[cmds[cmd]]) < 0) {
         fprintf(stderr, "msg: Execution failed\n ");
       }
 
       exit(EXIT_SUCCESS);
-    } else {
-      close(fd[OUTPUT_END]);
-      close(fd[INPUT_END]);
-      do {
-        w = waitpid(pid, &status, WUNTRACED);
-        if (w == -1) {
-          perror("waitpid");
-          exit(EXIT_FAILURE);
-        }
-      } while(!WIFEXITED(status) && !WIFSIGNALED(status));
+
+    } else if (pid < 0) {
+      perror("msg");
+      exit(EXIT_FAILURE);
     }
   }
-  
+
+  for (int i = 0; i < info->n_sym*2; i++) {
+    close(fd_pipes[i]);
+  }
+
+  while ((w = wait(&status)) > 0);
+}
+
+void pipe_stuff(char **p, int n_symbols) {
+  pip *info = find_replace_symbols(p, n_symbols);
+  pipeline_execute(p, info);
+
+  free(info->syms);
   free(info);
 }

@@ -70,9 +70,13 @@ char* shell_readline(char *append_prompt) {
   // remove quotation marks
   int len = strlen(gotLine);
   for (int i = 0; i < len; i++) {
-    if (gotLine[i] == '"') gotLine[i] = ' ';
+    if (gotLine[i] == '"') {
+      gotLine[i] = ' '; 
+    }
+    if (gotLine[i] == '\'') {
+      gotLine[i] = ' ';
+    }
   }
-
   return gotLine;
 }
 
@@ -107,17 +111,28 @@ int shell_system(char **args) {
   // for(int i = 0; *(args + i) != NULL; i++) {
   //   printf("%s\n", *(args + i));
   // }
+  char **p = args;
 
-  if (pipe_check(args)) {
-    pipe_stuff(args);
+  // for (int i = 0; args[i] != NULL; i++) {
+  //   for (int d = 0; args[i][d] != '\0'; d++) {
+  //     printf("[%s], ", args[i]);
+  //     break;
+  //   }
+  // }
+  //puts("");
+
+  int n_symbols = count_symbols(p);
+
+  if (n_symbols) {
+    pipe_stuff(args, n_symbols);
     return 1;
-  } else {
-    proc = fork();
-  }
+  } 
+
+  proc = fork();
 
   if (proc == 0) { // is child
     if (execvp(*args, args) < 0) {
-      fprintf(stderr, "msg: Execution failed\n ");
+      fprintf(stderr, "msg: Execution failed\n");
     }
     exit(EXIT_SUCCESS);
   } else if (proc < 0) { // failure
