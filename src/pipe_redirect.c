@@ -18,26 +18,6 @@ typedef enum symbol {
   sym_redirect,
 } symbol;
 
-// number of pipes
-// number of string entries
-// new array where '|' have been removed and in the original string transformed to a space
-
-/**
-["echo", "hello", "|", "lolcat", ">", "txt.pls2", NULL]
-**/
-
-
-// typedef struct cmd {
-//   char* prev;
-//   char** exec;
-// } cmd;
-
-// typedef struct pip {
-//   int n_;
-//   int n_str;
-//   cmd ***cmds;
-// } pip;
-
 typedef struct pip {
   int n_sym;
   int n_str;
